@@ -104,6 +104,49 @@ isort bot/
 mypy bot/
 ```
 
+## Deployment (Production)
+
+### Systemd Service (Timeweb/VPS)
+
+```bash
+# 1. Setup on server
+cd /root/speaky-chinese/speaky-chinese-ai
+python3 -m venv venv  # or python3.11 if installed
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Configure .env with production values
+nano .env
+
+# 3. Install systemd service (update paths in .service file first!)
+cp speaky-chinese.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable speaky-chinese.service
+systemctl start speaky-chinese.service
+
+# 4. Check status & logs
+systemctl status speaky-chinese
+tail -f /var/log/speaky-chinese/bot.log
+```
+
+**Full deployment guide**: See `DEPLOY.md`
+
+### Service Management
+
+```bash
+# Start/Stop/Restart
+systemctl start speaky-chinese
+systemctl stop speaky-chinese
+systemctl restart speaky-chinese
+
+# View logs
+journalctl -u speaky-chinese.service -f
+tail -f /var/log/speaky-chinese/bot.log
+
+# Health check
+curl http://localhost:8080/health
+```
+
 ## Testing Instructions
 
 ### Manual Testing

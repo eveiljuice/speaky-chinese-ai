@@ -1,6 +1,7 @@
 """Start both bot and webhook server."""
 import asyncio
 import subprocess
+import os
 import sys
 import signal
 import logging
@@ -31,12 +32,16 @@ async def main():
     
     # Start webhook server
     logger.info("📡 Starting webhook server on port 8080...")
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+
     webhook_proc = subprocess.Popen(
-        [sys.executable, "webhook_server.py"],
+        [sys.executable, "-u", "webhook_server.py"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        env=env
     )
     processes.append(webhook_proc)
     
@@ -46,11 +51,12 @@ async def main():
     # Start telegram bot
     logger.info("🤖 Starting Telegram bot...")
     bot_proc = subprocess.Popen(
-        [sys.executable, "-m", "bot.main"],
+        [sys.executable, "-u", "-m", "bot.main"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        bufsize=1
+        bufsize=1,
+        env=env
     )
     processes.append(bot_proc)
     

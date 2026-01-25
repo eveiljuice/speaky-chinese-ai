@@ -11,3 +11,5 @@ bot.db
 *.log
 .DS_Store
 Thumbs.db
+*.service
+DEPLOY.md
