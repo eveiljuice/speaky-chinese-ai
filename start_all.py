@@ -37,10 +37,6 @@ async def main():
 
     webhook_proc = subprocess.Popen(
         [sys.executable, "-u", "webhook_server.py"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
         env=env
     )
     processes.append(webhook_proc)
@@ -52,10 +48,6 @@ async def main():
     logger.info("🤖 Starting Telegram bot...")
     bot_proc = subprocess.Popen(
         [sys.executable, "-u", "-m", "bot.main"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1,
         env=env
     )
     processes.append(bot_proc)
@@ -64,21 +56,9 @@ async def main():
     logger.info("Webhook: http://localhost:8080/health")
     logger.info("Bot: Running in polling mode\n")
     
-    # Keep running and show logs
+    # Keep running and watch child processes
     try:
         while True:
-            # Read webhook logs
-            if webhook_proc.poll() is None:
-                line = webhook_proc.stdout.readline()
-                if line:
-                    print(f"[WEBHOOK] {line.strip()}")
-            
-            # Read bot logs
-            if bot_proc.poll() is None:
-                line = bot_proc.stdout.readline()
-                if line:
-                    print(f"[BOT] {line.strip()}")
-            
             # Check if processes are still running
             if webhook_proc.poll() is not None:
                 logger.error("❌ Webhook server stopped!")

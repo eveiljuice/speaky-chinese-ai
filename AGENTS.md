@@ -147,6 +147,9 @@ tail -f /var/log/speaky-chinese/bot.log
 curl http://localhost:8080/health
 ```
 
+Logging note:
+- `start_all.py` should inherit stdout/stderr so systemd captures child logs.
+
 ## Testing Instructions
 
 ### Manual Testing
