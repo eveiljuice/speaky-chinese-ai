@@ -72,7 +72,23 @@ hanyu-bot/
 - `bot/config.py` — All settings from .env
 - `bot/services/ai.py` — Whisper, GPT, TTS integration
 - `bot/handlers/dialog.py` — Main voice/text processing
+- `bot/handlers/callbacks.py` — Inline button handlers (Text, Help, Translate, Explain)
 - `bot/database/repositories.py` — All CRUD operations
+
+### Help Button Feature
+- When user clicks "❓ Помощь" button, bot generates 2-3 response suggestions
+- Each suggestion includes Chinese text + pinyin (format: "我今天看书。- Wǒ jīntiān kàn shū.")
+- Suggestions are context-aware based on conversation history and HSK level
+
+### Dialogue Topics
+Available topics for conversation:
+- ✈️ Путешествия (旅游) - travel
+- 🍜 Еда (美食) - food
+- 💼 Работа (工作) - work
+- 🏠 Быт (日常生活) - daily life
+- 📚 Учёба (学习) - study
+- 🏥 Здоровье (健康) - health
+- 💬 Свободный диалог (自由对话) - free conversation on any topic
 
 ## Build & Run Commands
 
@@ -168,6 +184,7 @@ Logging note:
 - [ ] Error correction display
 - [ ] Inline buttons (Text, Help, Translate, Explain)
 - [ ] Settings change (level, speed, topic)
+- [ ] Settings navigation (submenu → back → close)
 - [ ] Profile subscription button (👤 Профиль → "Купить/Управление подпиской")
 - [ ] Premium purchase via Tribute (/premium → payment link)
 - [ ] Webhook payment processing (POST /webhook/tribute)

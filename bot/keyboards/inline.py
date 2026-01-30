@@ -34,7 +34,8 @@ def get_topic_keyboard(current_topic: str) -> InlineKeyboardMarkup:
         ("work", "💼 Работа"),
         ("daily", "🏠 Быт"),
         ("study", "📚 Учёба"),
-        ("health", "🏥 Здоровье")
+        ("health", "🏥 Здоровье"),
+        ("free", "💬 Свободный диалог")
     ]
 
     builder = InlineKeyboardBuilder()
@@ -47,6 +48,12 @@ def get_topic_keyboard(current_topic: str) -> InlineKeyboardMarkup:
         )
 
     builder.adjust(2)  # 2 buttons per row
+
+    # Add back button
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="settings:back")
+    )
+
     return builder.as_markup()
 
 
@@ -62,6 +69,12 @@ def get_level_keyboard(current_level: int) -> InlineKeyboardMarkup:
         )
 
     builder.adjust(3)
+
+    # Add back button
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="settings:back")
+    )
+
     return builder.as_markup()
 
 
@@ -83,6 +96,12 @@ def get_speed_keyboard(current_speed: str) -> InlineKeyboardMarkup:
         )
 
     builder.adjust(3)
+
+    # Add back button
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="settings:back")
+    )
+
     return builder.as_markup()
 
 
@@ -101,6 +120,10 @@ def get_settings_keyboard() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="🎯 Изменить тему",
                              callback_data="settings:topic")
+    )
+    builder.row(
+        InlineKeyboardButton(text="◀️ Закрыть",
+                             callback_data="settings:close")
     )
 
     return builder.as_markup()
@@ -134,10 +157,10 @@ def get_premium_keyboard() -> InlineKeyboardMarkup:
 
 def get_profile_subscription_keyboard(has_premium: bool) -> InlineKeyboardMarkup:
     """Get subscription button for profile based on premium status.
-    
+
     Args:
         has_premium: True if user has active Premium subscription
-        
+
     Returns:
         Keyboard with "Управление подпиской" or "Купить подписку Premium" button
     """

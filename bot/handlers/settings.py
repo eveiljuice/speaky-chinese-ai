@@ -27,7 +27,7 @@ async def btn_settings(message: Message, user: User):
 async def cmd_level(message: Message, user: User):
     """Handle /level command."""
     from bot.keyboards.inline import get_level_keyboard
-    
+
     await message.answer(
         f"📊 <b>Выберите уровень HSK</b>\n\n"
         f"Текущий уровень: <b>HSK {user.hsk_level}</b>\n\n"
@@ -46,16 +46,17 @@ async def show_settings(message: Message, user: User):
         "normal": "🚶 Нормальная",
         "fast": "🏃 Быстрая"
     }
-    
+
     topic_names = {
         "travel": "✈️ Путешествия",
         "food": "🍜 Еда",
         "work": "💼 Работа",
         "daily": "🏠 Быт",
         "study": "📚 Учёба",
-        "health": "🏥 Здоровье"
+        "health": "🏥 Здоровье",
+        "free": "💬 Свободный диалог"
     }
-    
+
     await message.answer(
         f"⚙️ <b>Настройки</b>\n\n"
         f"📊 Уровень HSK: <b>{user.hsk_level}</b>\n"

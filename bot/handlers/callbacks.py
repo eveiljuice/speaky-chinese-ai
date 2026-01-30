@@ -27,7 +27,8 @@ async def callback_topic(callback: CallbackQuery, user: User):
         "work": "💼 Работа",
         "daily": "🏠 Быт",
         "study": "📚 Учёба",
-        "health": "🏥 Здоровье"
+        "health": "🏥 Здоровье",
+        "free": "💬 Свободный диалог"
     }
 
     if topic not in topics:
@@ -150,6 +151,41 @@ async def callback_settings(callback: CallbackQuery, user: User):
             parse_mode="HTML"
         )
 
+    elif action == "close":
+        # Close settings menu by deleting the message
+        await callback.message.delete()
+        await callback.answer("Настройки закрыты")
+        return
+
+    elif action == "back":
+        # Return to main settings menu
+        speed_names = {
+            "slow": "🐢 Медленная",
+            "normal": "🚶 Нормальная",
+            "fast": "🏃 Быстрая"
+        }
+
+        topic_names = {
+            "travel": "✈️ Путешествия",
+            "food": "🍜 Еда",
+            "work": "💼 Работа",
+            "daily": "🏠 Быт",
+            "study": "📚 Учёба",
+            "health": "🏥 Здоровье",
+            "free": "💬 Свободный диалог"
+        }
+
+        await callback.message.edit_text(
+            f"⚙️ <b>Настройки</b>\n\n"
+            f"📊 Уровень HSK: <b>{user.hsk_level}</b>\n"
+            f"🔊 Скорость речи: {speed_names.get(user.speech_speed, 'Нормальная')}\n"
+            f"🎯 Тема: {topic_names.get(user.current_topic, 'Быт')}",
+            reply_markup=get_settings_keyboard(),
+            parse_mode="HTML"
+        )
+        await callback.answer()
+        return
+
     await callback.answer()
 
 
@@ -209,7 +245,17 @@ async def callback_help(callback: CallbackQuery, user: User):
         if suggestions:
             text = "💬 <b>Варианты ответа:</b>\n\n"
             for i, s in enumerate(suggestions[:3], 1):
-                text += f"<b>{i}.</b> {s}\n"
+                # Handle both old format (string) and new format (dict with text and pinyin)
+                if isinstance(s, dict):
+                    chinese_text = s.get("text", "")
+                    pinyin = s.get("pinyin", "")
+                    if pinyin:
+                        text += f"<b>{i}.</b> {chinese_text} - {pinyin}\n"
+                    else:
+                        text += f"<b>{i}.</b> {chinese_text}\n"
+                else:
+                    # Fallback for old string format
+                    text += f"<b>{i}.</b> {s}\n"
             await callback.message.reply(text, parse_mode="HTML")
         else:
             await callback.message.reply(

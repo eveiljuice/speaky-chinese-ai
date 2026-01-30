@@ -16,7 +16,8 @@ TOPICS = {
     "work": "💼 Работа (工作)",
     "daily": "🏠 Быт (日常生活)",
     "study": "📚 Учёба (学习)",
-    "health": "🏥 Здоровье (健康)"
+    "health": "🏥 Здоровье (健康)",
+    "free": "💬 Свободный диалог (自由对话)"
 }
 
 
@@ -24,7 +25,7 @@ TOPICS = {
 async def cmd_topic(message: Message, user: User):
     """Handle /topic command."""
     current_topic_name = TOPICS.get(user.current_topic, "🏠 Быт")
-    
+
     await message.answer(
         f"🎯 <b>Выберите тему для диалога</b>\n\n"
         f"Текущая тема: <b>{current_topic_name}</b>\n\n"
