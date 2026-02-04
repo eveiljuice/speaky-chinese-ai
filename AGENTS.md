@@ -196,6 +196,7 @@ curl https://your-railway-app.railway.app/health
 - **Railway (Production)**: Uses `railway_start.py` → Webhook mode
 - **Local Development**: Use `python -m bot.main` → Polling mode
 - **Never run polling mode on Railway** → causes multiple instances conflict
+- `bot.main` blocks polling if Railway env vars are present
 
 #### Troubleshooting Railway
 

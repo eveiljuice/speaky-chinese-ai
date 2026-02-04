@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 
 from aiogram import Bot, Dispatcher
@@ -26,32 +27,44 @@ logger = logging.getLogger(__name__)
 async def main():
     """Main function to start the bot."""
     logger.info("Starting SpeakyChinese bot...")
-    
+
+    # Prevent polling in Railway (webhook-only in production)
+    if (
+        os.environ.get("RAILWAY_STATIC_URL")
+        or os.environ.get("RAILWAY_ENVIRONMENT")
+        or os.environ.get("RAILWAY_PROJECT_ID")
+        or os.environ.get("RAILWAY_SERVICE_ID")
+    ):
+        logger.error(
+            "Polling mode is disabled on Railway. Use railway_start.py (webhook mode)."
+        )
+        return
+
     # Initialize database
     logger.info("Initializing database...")
     await init_db()
-    
+
     # Create bot instance
     bot = Bot(
         token=settings.BOT_TOKEN,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML)
     )
-    
+
     # Create dispatcher
     dp = Dispatcher()
-    
+
     # Register middlewares (order matters!)
     dp.message.middleware(ThrottlingMiddleware(rate_limit=1.0))
     dp.message.middleware(AuthMiddleware())
     dp.message.middleware(SubscriptionMiddleware())
-    
+
     dp.callback_query.middleware(ThrottlingMiddleware(rate_limit=0.5))
     dp.callback_query.middleware(AuthMiddleware())
-    
+
     # Register handlers
     router = setup_routers()
     dp.include_router(router)
-    
+
     # Start polling
     logger.info("Bot started! Polling for updates...")
     try:
