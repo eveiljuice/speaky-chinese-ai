@@ -25,11 +25,23 @@ def signal_handler(sig, frame):
 
 async def main():
     """Run both bot and webhook server."""
+    # Safety: never run polling bundle on Railway
+    if (
+        os.environ.get("RAILWAY_STATIC_URL")
+        or os.environ.get("RAILWAY_ENVIRONMENT")
+        or os.environ.get("RAILWAY_PROJECT_ID")
+        or os.environ.get("RAILWAY_SERVICE_ID")
+    ):
+        logger.error(
+            "start_all.py is for local dev only. On Railway use railway_start.py."
+        )
+        return
+
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     logger.info("🚀 Starting SpeakyChinese Bot + Webhook Server...")
     logger.info("Press Ctrl+C to stop all services\n")
-    
+
     # Start webhook server
     logger.info("📡 Starting webhook server on port 8080...")
     env = os.environ.copy()
@@ -40,10 +52,10 @@ async def main():
         env=env
     )
     processes.append(webhook_proc)
-    
+
     # Wait a bit for webhook to start
     await asyncio.sleep(2)
-    
+
     # Start telegram bot
     logger.info("🤖 Starting Telegram bot...")
     bot_proc = subprocess.Popen(
@@ -51,11 +63,11 @@ async def main():
         env=env
     )
     processes.append(bot_proc)
-    
+
     logger.info("\n✅ All services started!")
     logger.info("Webhook: http://localhost:8080/health")
     logger.info("Bot: Running in polling mode\n")
-    
+
     # Keep running and watch child processes
     try:
         while True:
@@ -66,7 +78,7 @@ async def main():
             if bot_proc.poll() is not None:
                 logger.error("❌ Bot stopped!")
                 break
-            
+
             await asyncio.sleep(0.1)
     except KeyboardInterrupt:
         signal_handler(None, None)
