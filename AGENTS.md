@@ -266,6 +266,8 @@ journalctl -u speaky-chinese.service -f
 - [ ] Premium purchase via Tribute (/premium → payment link)
 - [ ] Webhook payment processing (POST /webhook/tribute)
 - [ ] Admin panel (stats, users, broadcast)
+- [ ] Admin premium management (grant days, grant permanent premium)
+- [ ] Grant permanent premium to all admins (one-click button)
 
 ## Code Style Guidelines
 
@@ -309,6 +311,36 @@ type: short description
 ```
 
 Types: feat, fix, refactor, docs, test, chore
+
+## Admin Features
+
+### Premium Management
+Admins can grant premium subscriptions to users through the admin panel:
+
+1. **Grant Premium to User**
+   - `/admin` → Search user or browse user list
+   - Click user card → "💎 Выдать Premium"
+   - Select duration: 7, 30, 90 days, or ♾️ Навсегда (permanent)
+   - Permanent premium = 100 years (36500 days)
+
+2. **Grant Premium to All Admins**
+   - `/admin` → "♾️ Premium для админов"
+   - One-click grants permanent premium to all admin IDs from config
+   - All admins get notification about permanent premium
+
+3. **Premium Features**
+   - Permanent premium displayed as "♾️ Навсегда" in UI
+   - Users get notified when premium is granted
+   - Premium status affects subscription middleware (unlimited usage)
+
+### Admin Panel Features
+- **📊 Statistics**: Users, premium count, DAU/WAU/MAU, revenue
+- **👥 User Management**: Browse all users, premium users only
+- **🔍 Search**: Find users by Telegram ID or @username
+- **💎 Grant Premium**: 7/30/90 days or permanent subscription
+- **🚫 Block/Unblock**: Manage access to bot
+- **📨 Direct Messages**: Send message to specific user
+- **📢 Broadcast**: Send message to all/premium/free users
 
 ## Security & Best Practices
 

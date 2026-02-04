@@ -54,10 +54,10 @@ async def cmd_admin(message: Message, user: User):
     if not settings.is_admin(message.from_user.id):
         await message.answer("⛔ Доступ запрещён")
         return
-    
+
     admin_repo = AdminRepository()
     stats = await admin_repo.get_stats()
-    
+
     await message.answer(
         f"🔐 <b>Админ-панель</b>\n\n"
         f"📊 <b>Статистика:</b>\n"
@@ -77,12 +77,12 @@ async def callback_admin_back(callback: CallbackQuery, state: FSMContext):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     await state.clear()
-    
+
     admin_repo = AdminRepository()
     stats = await admin_repo.get_stats()
-    
+
     await callback.answer()
     await callback.message.edit_text(
         f"🔐 <b>Админ-панель</b>\n\n"
@@ -102,13 +102,13 @@ async def callback_admin_stats(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     admin_repo = AdminRepository()
     stats = await admin_repo.get_stats()
-    
+
     # Calculate MRR (Monthly Recurring Revenue)
     mrr = stats['premium_users'] * (settings.PREMIUM_PRICE // 100)
-    
+
     await callback.answer()
     await callback.message.edit_text(
         f"📈 <b>Статистика бота</b>\n\n"
@@ -140,24 +140,24 @@ async def callback_admin_users(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     parts = callback.data.split(":")
     # admin:users:all or admin:users:premium or admin:users:all:page
     user_type = parts[2]
     page = int(parts[3]) if len(parts) > 3 else 1
-    
+
     premium_only = user_type == "premium"
-    
+
     admin_repo = AdminRepository()
     offset = (page - 1) * USERS_PER_PAGE
     users, total = await admin_repo.get_users_list(
-        limit=USERS_PER_PAGE, 
+        limit=USERS_PER_PAGE,
         offset=offset,
         premium_only=premium_only
     )
-    
+
     total_pages = max(1, (total + USERS_PER_PAGE - 1) // USERS_PER_PAGE)
-    
+
     # Format user list
     lines = []
     for i, u in enumerate(users, start=offset + 1):
@@ -167,16 +167,17 @@ async def callback_admin_users(callback: CallbackQuery):
             SubscriptionType.TRIAL: "🎁",
             SubscriptionType.FREE: "🆓"
         }.get(status, "🆓")
-        
+
         name = f"@{u.username}" if u.username else f"user_{u.id}"
         date_str = u.created_at.strftime("%d.%m.%Y")
         lines.append(f"{i}. {name} — {status_emoji} — {date_str}")
-    
+
     title = "💎 Premium пользователи" if premium_only else "👥 Пользователи"
-    
+
     await callback.answer()
     await callback.message.edit_text(
-        f"{title} ({total})\n\n" + "\n".join(lines) if lines else "Нет пользователей",
+        f"{title} ({total})\n\n" +
+        "\n".join(lines) if lines else "Нет пользователей",
         reply_markup=get_admin_users_keyboard(page, total_pages, premium_only),
         parse_mode="HTML"
     )
@@ -188,7 +189,7 @@ async def callback_admin_search(callback: CallbackQuery, state: FSMContext):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     await state.set_state(AdminStates.waiting_search)
     await callback.answer()
     await callback.message.edit_text(
@@ -203,10 +204,10 @@ async def process_search(message: Message, state: FSMContext):
     """Process user search query."""
     if not settings.is_admin(message.from_user.id):
         return
-    
+
     admin_repo = AdminRepository()
     user = await admin_repo.search_user(message.text.strip())
-    
+
     if not user:
         await message.answer(
             "❌ Пользователь не найден.\n"
@@ -215,7 +216,7 @@ async def process_search(message: Message, state: FSMContext):
         )
         await state.clear()
         return
-    
+
     await state.clear()
     await show_user_card(message, user.id)
 
@@ -226,7 +227,7 @@ async def callback_admin_user(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     user_id = int(callback.data.split(":")[2])
     await callback.answer()
     await show_user_card(callback.message, user_id, edit=True)
@@ -236,7 +237,7 @@ async def show_user_card(message: Message, user_id: int, edit: bool = False):
     """Show detailed user card."""
     admin_repo = AdminRepository()
     details = await admin_repo.get_user_details(user_id)
-    
+
     if not details:
         text = "❌ Пользователь не найден"
         if edit:
@@ -244,26 +245,26 @@ async def show_user_card(message: Message, user_id: int, edit: bool = False):
         else:
             await message.answer(text, reply_markup=get_admin_main_keyboard())
         return
-    
+
     user = details["user"]
     status = get_subscription_status(user)
-    
+
     status_name = {
         SubscriptionType.PREMIUM: "💎 Premium",
         SubscriptionType.TRIAL: "🎁 Trial",
         SubscriptionType.FREE: "🆓 Free"
     }.get(status, "🆓 Free")
-    
+
     premium_info = ""
     if status == SubscriptionType.PREMIUM and user.premium_until:
         premium_info = f"\n• Активна до: <b>{user.premium_until.strftime('%d.%m.%Y')}</b>"
-    
+
     referrer_info = ""
     if details["referrer"]:
         referrer_info = f"\n• Приглашён: @{details['referrer']}"
-    
+
     blocked_info = "\n⛔ <b>ЗАБЛОКИРОВАН</b>" if user.is_blocked else ""
-    
+
     text = (
         f"👤 <b>Пользователь #{user.id}</b>{blocked_info}\n\n"
         f"📋 <b>Основное:</b>\n"
@@ -281,7 +282,7 @@ async def show_user_card(message: Message, user_id: int, edit: bool = False):
         f"👥 <b>Рефералы:</b>{referrer_info}\n"
         f"• Пригласил: <b>{details['referrals_count']}</b> человек"
     )
-    
+
     if edit:
         await message.edit_text(
             text,
@@ -302,14 +303,14 @@ async def callback_give_premium(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     user_id = int(callback.data.split(":")[2])
-    
+
     user_repo = UserRepository()
     user = await user_repo.get(user_id)
-    
+
     name = f"@{user.username}" if user and user.username else f"user_{user_id}"
-    
+
     await callback.answer()
     await callback.message.edit_text(
         f"💎 <b>Выдать Premium</b>\n\n"
@@ -326,37 +327,64 @@ async def callback_premium_days(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     parts = callback.data.split(":")
     user_id = int(parts[2])
     days = int(parts[3])
-    
+
     user_repo = UserRepository()
     new_until = await user_repo.add_premium_days(user_id, days)
-    
+
     user = await user_repo.get(user_id)
     name = f"@{user.username}" if user and user.username else f"user_{user_id}"
-    
-    await callback.answer(f"✅ Premium выдан на {days} дней!", show_alert=True)
-    await callback.message.edit_text(
-        f"✅ <b>Premium выдан!</b>\n\n"
-        f"Пользователь: {name}\n"
-        f"Срок: {days} дней\n"
-        f"Активен до: {new_until.strftime('%d.%m.%Y')}",
-        reply_markup=get_admin_user_keyboard(user_id, user.is_blocked if user else False),
-        parse_mode="HTML"
-    )
-    
-    # Notify user
-    try:
-        await callback.bot.send_message(
-            user_id,
-            f"🎁 Вам выдан Premium на <b>{days} дней</b>!\n"
+
+    # Check if this is permanent premium (100 years)
+    is_permanent = days >= 36500
+
+    if is_permanent:
+        await callback.answer("✅ Перманентный Premium выдан!", show_alert=True)
+        await callback.message.edit_text(
+            f"✅ <b>Premium выдан!</b>\n\n"
+            f"Пользователь: {name}\n"
+            f"Срок: ♾️ <b>Навсегда</b>\n"
             f"Активен до: {new_until.strftime('%d.%m.%Y')}",
+            reply_markup=get_admin_user_keyboard(
+                user_id, user.is_blocked if user else False),
             parse_mode="HTML"
         )
-    except Exception:
-        pass
+
+        # Notify user
+        try:
+            await callback.bot.send_message(
+                user_id,
+                f"🎁 Вам выдан <b>перманентный Premium</b>!\n"
+                f"♾️ Подписка активна навсегда!",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
+    else:
+        await callback.answer(f"✅ Premium выдан на {days} дней!", show_alert=True)
+        await callback.message.edit_text(
+            f"✅ <b>Premium выдан!</b>\n\n"
+            f"Пользователь: {name}\n"
+            f"Срок: {days} дней\n"
+            f"Активен до: {new_until.strftime('%d.%m.%Y')}",
+            reply_markup=get_admin_user_keyboard(
+                user_id, user.is_blocked if user else False),
+            parse_mode="HTML"
+        )
+
+        # Notify user
+        try:
+            await callback.bot.send_message(
+                user_id,
+                f"🎁 Вам выдан Premium на <b>{days} дней</b>!\n"
+                f"Активен до: {new_until.strftime('%d.%m.%Y')}",
+                parse_mode="HTML"
+            )
+        except Exception:
+            pass
 
 
 @router.callback_query(F.data.startswith("admin:block:"))
@@ -365,12 +393,12 @@ async def callback_block_user(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     user_id = int(callback.data.split(":")[2])
-    
+
     user_repo = UserRepository()
     await user_repo.block(user_id)
-    
+
     await callback.answer("🚫 Пользователь заблокирован", show_alert=True)
     await show_user_card(callback.message, user_id, edit=True)
 
@@ -381,12 +409,12 @@ async def callback_unblock_user(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     user_id = int(callback.data.split(":")[2])
-    
+
     user_repo = UserRepository()
     await user_repo.unblock(user_id)
-    
+
     await callback.answer("✅ Пользователь разблокирован", show_alert=True)
     await show_user_card(callback.message, user_id, edit=True)
 
@@ -397,16 +425,16 @@ async def callback_message_user(callback: CallbackQuery, state: FSMContext):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     user_id = int(callback.data.split(":")[2])
-    
+
     await state.set_state(AdminStates.waiting_user_message)
     await state.update_data(target_user_id=user_id)
-    
+
     user_repo = UserRepository()
     user = await user_repo.get(user_id)
     name = f"@{user.username}" if user and user.username else f"user_{user_id}"
-    
+
     await callback.answer()
     await callback.message.edit_text(
         f"📨 <b>Сообщение пользователю</b>\n\n"
@@ -421,14 +449,14 @@ async def process_user_message(message: Message, state: FSMContext):
     """Send message to user."""
     if not settings.is_admin(message.from_user.id):
         return
-    
+
     data = await state.get_data()
     user_id = data.get("target_user_id")
-    
+
     if not user_id:
         await state.clear()
         return
-    
+
     try:
         await message.bot.send_message(user_id, message.text)
         await message.answer(
@@ -440,7 +468,7 @@ async def process_user_message(message: Message, state: FSMContext):
             f"❌ Не удалось отправить сообщение: {e}",
             reply_markup=get_admin_main_keyboard()
         )
-    
+
     await state.clear()
 
 
@@ -451,7 +479,7 @@ async def callback_broadcast(callback: CallbackQuery):
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     await callback.answer()
     await callback.message.edit_text(
         "📢 <b>Рассылка сообщений</b>\n\n"
@@ -467,21 +495,21 @@ async def callback_broadcast_audience(callback: CallbackQuery, state: FSMContext
     if not settings.is_admin(callback.from_user.id):
         await callback.answer("⛔ Доступ запрещён", show_alert=True)
         return
-    
+
     audience = callback.data.split(":")[2]
-    
+
     admin_repo = AdminRepository()
     user_ids = await admin_repo.get_broadcast_audience(audience)
-    
+
     if not user_ids:
         await callback.answer("Нет пользователей для рассылки", show_alert=True)
         return
-    
+
     await state.set_state(AdminStates.waiting_broadcast_text)
     await state.update_data(broadcast_audience=audience, broadcast_count=len(user_ids))
-    
+
     audience_names = {"all": "всем", "premium": "Premium", "free": "Free"}
-    
+
     await callback.answer()
     await callback.message.edit_text(
         f"📝 <b>Рассылка {audience_names.get(audience, 'всем')}</b>\n\n"
@@ -496,37 +524,93 @@ async def process_broadcast(message: Message, state: FSMContext):
     """Send broadcast message."""
     if not settings.is_admin(message.from_user.id):
         return
-    
+
     data = await state.get_data()
     audience = data.get("broadcast_audience", "all")
-    
+
     admin_repo = AdminRepository()
     user_ids = await admin_repo.get_broadcast_audience(audience)
-    
+
     await state.clear()
-    
+
     status_msg = await message.answer(f"📤 Отправка... 0/{len(user_ids)}")
-    
+
     success = 0
     failed = 0
-    
+
     for i, user_id in enumerate(user_ids, 1):
         try:
             await message.bot.send_message(user_id, message.text)
             success += 1
         except Exception:
             failed += 1
-        
+
         # Update status every 10 messages
         if i % 10 == 0:
             try:
                 await status_msg.edit_text(f"📤 Отправка... {i}/{len(user_ids)}")
             except Exception:
                 pass
-    
+
     await status_msg.edit_text(
         f"✅ <b>Рассылка завершена!</b>\n\n"
         f"• Успешно: <b>{success}</b>\n"
         f"• Ошибок: <b>{failed}</b>",
+        parse_mode="HTML"
+    )
+
+
+@router.callback_query(F.data == "admin:premium_all_admins")
+async def callback_premium_all_admins(callback: CallbackQuery):
+    """Grant permanent premium to all admins."""
+    if not settings.is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await callback.answer()
+
+    # Get all admin IDs from config
+    admin_ids = [int(aid.strip())
+                 for aid in settings.ADMIN_IDS.split(',') if aid.strip()]
+
+    user_repo = UserRepository()
+    granted = []
+    failed = []
+
+    for admin_id in admin_ids:
+        try:
+            # Grant 100 years of premium (permanent)
+            new_until = await user_repo.add_premium_days(admin_id, 36500)
+            user = await user_repo.get(admin_id)
+            name = f"@{user.username}" if user and user.username else f"user_{admin_id}"
+            granted.append(name)
+
+            # Notify admin
+            try:
+                await callback.bot.send_message(
+                    admin_id,
+                    f"🎁 Вам выдан <b>перманентный Premium</b>!\n"
+                    f"♾️ Подписка активна навсегда!",
+                    parse_mode="HTML"
+                )
+            except Exception:
+                pass
+        except Exception as e:
+            logger.error(f"Failed to grant premium to admin {admin_id}: {e}")
+            failed.append(str(admin_id))
+
+    result_text = f"✅ <b>Premium выдан всем админам!</b>\n\n"
+
+    if granted:
+        result_text += f"♾️ <b>Перманентный Premium получили:</b>\n"
+        result_text += "\n".join([f"• {name}" for name in granted])
+
+    if failed:
+        result_text += f"\n\n❌ <b>Ошибки:</b>\n"
+        result_text += "\n".join([f"• ID {fid}" for fid in failed])
+
+    await callback.message.edit_text(
+        result_text,
+        reply_markup=get_admin_main_keyboard(),
         parse_mode="HTML"
     )

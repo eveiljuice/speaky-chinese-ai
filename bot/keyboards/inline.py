@@ -233,6 +233,8 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
         text="📈 Статистика", callback_data="admin:stats"))
     builder.row(InlineKeyboardButton(
         text="📢 Рассылка", callback_data="admin:broadcast"))
+    builder.row(InlineKeyboardButton(
+        text="♾️ Premium для админов", callback_data="admin:premium_all_admins"))
 
     return builder.as_markup()
 
@@ -277,6 +279,10 @@ def get_admin_premium_days_keyboard(user_id: int) -> InlineKeyboardMarkup:
             text="30 дней", callback_data=f"admin:premium_days:{user_id}:30"),
         InlineKeyboardButton(
             text="90 дней", callback_data=f"admin:premium_days:{user_id}:90")
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="♾️ Навсегда", callback_data=f"admin:premium_days:{user_id}:36500")
     )
     builder.row(
         InlineKeyboardButton(
