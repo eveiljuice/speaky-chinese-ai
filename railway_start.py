@@ -24,8 +24,21 @@ logger = logging.getLogger(__name__)
 
 # Railway provides PORT env variable
 PORT = int(os.environ.get("PORT", 8080))
-# Railway provides public URL
+# Railway provides public URL/domain
 RAILWAY_STATIC_URL = os.environ.get("RAILWAY_STATIC_URL", "")
+RAILWAY_PUBLIC_URL = os.environ.get("RAILWAY_PUBLIC_URL", "")
+RAILWAY_PUBLIC_DOMAIN = os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")
+
+
+def _resolve_public_base_url() -> str:
+    """Resolve public base URL for webhook."""
+    if RAILWAY_STATIC_URL:
+        return RAILWAY_STATIC_URL
+    if RAILWAY_PUBLIC_URL:
+        return RAILWAY_PUBLIC_URL
+    if RAILWAY_PUBLIC_DOMAIN:
+        return f"https://{RAILWAY_PUBLIC_DOMAIN}"
+    return ""
 
 
 async def on_startup(bot: Bot):
@@ -33,13 +46,16 @@ async def on_startup(bot: Bot):
     # Delete any existing webhook first
     await bot.delete_webhook(drop_pending_updates=True)
 
-    if RAILWAY_STATIC_URL:
-        webhook_url = f"{RAILWAY_STATIC_URL}/webhook"
+    base_url = _resolve_public_base_url()
+    if base_url:
+        webhook_url = f"{base_url}/webhook"
         logger.info(f"Setting webhook: {webhook_url}")
         await bot.set_webhook(webhook_url)
     else:
         logger.warning(
-            "⚠️  RAILWAY_STATIC_URL not set! Bot will not receive updates.")
+            "⚠️  Public URL not set (RAILWAY_STATIC_URL/RAILWAY_PUBLIC_URL/"
+            "RAILWAY_PUBLIC_DOMAIN). Bot will not receive updates."
+        )
 
 
 async def on_shutdown(bot: Bot):
@@ -109,7 +125,9 @@ async def main():
     setup_application(app, dp, bot=bot)
 
     logger.info(f"✅ Webhook server starting on port {PORT}")
-    logger.info(f"Webhook URL: {RAILWAY_STATIC_URL}/webhook")
+    base_url = _resolve_public_base_url()
+    logger.info(
+        f"Webhook URL: {base_url + '/webhook' if base_url else '/webhook'}")
 
     # Run app
     runner = web.AppRunner(app)
