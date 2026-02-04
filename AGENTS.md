@@ -122,49 +122,125 @@ mypy bot/
 
 ## Deployment (Production)
 
-### Systemd Service (Timeweb/VPS)
+### Railway Deployment (Current Setup)
+
+#### Initial Setup
+
+1. **Connect GitHub repository to Railway**
+   - Go to [Railway Dashboard](https://railway.app)
+   - Create new project → Deploy from GitHub
+   - Select `speaky-chinese` repository
+
+2. **Configure Environment Variables**
+   Add these in Railway dashboard:
+   ```
+   BOT_TOKEN=your_telegram_bot_token
+   OPENAI_API_KEY=your_openai_api_key
+   ADMIN_IDS=comma,separated,telegram,ids
+   TRIBUTE_API_KEY=your_tribute_api_key
+   TRIBUTE_PRODUCT_ID=your_product_id
+   TRIBUTE_PAYMENT_LINK=https://t.me/tribute/app?startapp=pq5z
+   LOG_LEVEL=INFO
+   ```
+
+3. **Railway will automatically deploy**
+   - Uses `Procfile` → runs `railway_start.py` (webhook mode)
+   - Port is provided by Railway via `PORT` env var
+   - Public URL is provided via `RAILWAY_STATIC_URL`
+
+#### Important Railway Settings
+
+**⚠️ CRITICAL: Set Replica Count to 1**
+- Go to Settings → Deploy
+- Set "Replicas" = 1
+- Multiple replicas cause "Conflict: terminated by other getUpdates" error
+
+**Railway Configuration (`railway.json`):**
+```json
+{
+  "deploy": {
+    "numReplicas": 1,
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+```
+
+#### Deployment Commands
+
+```bash
+# Deploy via git push
+git add .
+git commit -m "update: feature description"
+git push origin main  # Railway auto-deploys
+
+# View logs
+railway logs
+
+# Local Railway CLI
+railway up  # Deploy from CLI
+railway run python railway_start.py  # Test locally with Railway env vars
+```
+
+#### Health Check
+
+```bash
+# Check bot is running
+curl https://your-railway-app.railway.app/health
+
+# Response should be:
+# {"status": "ok", "service": "speaky-chinese-bot", "mode": "webhook"}
+```
+
+#### Webhook vs Polling Mode
+
+- **Railway (Production)**: Uses `railway_start.py` → Webhook mode
+- **Local Development**: Use `python -m bot.main` → Polling mode
+- **Never run polling mode on Railway** → causes multiple instances conflict
+
+#### Troubleshooting Railway
+
+**"Conflict: terminated by other getUpdates"**
+- ✅ Check: Only 1 replica running (Railway Settings → Deploy)
+- ✅ Check: No other deployments active
+- ✅ Check: Using `railway_start.py` (webhook), not `bot.main` (polling)
+- ✅ Fix: Delete webhook if needed: `python delete_webhook.py`
+
+**Check active deployments:**
+```bash
+railway status
+# Should show only 1 active deployment
+```
+
+**Force restart:**
+```bash
+railway restart
+# or via dashboard: Deployments → Active → Restart
+```
+
+### Alternative: Systemd Service (VPS/Timeweb)
+
+If deploying to VPS instead of Railway:
 
 ```bash
 # 1. Setup on server
 cd /root/speaky-chinese/speaky-chinese-ai
-python3 -m venv venv  # or python3.11 if installed
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
 # 2. Configure .env with production values
 nano .env
 
-# 3. Install systemd service (update paths in .service file first!)
+# 3. Install systemd service
 cp speaky-chinese.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable speaky-chinese.service
 systemctl start speaky-chinese.service
 
-# 4. Check status & logs
+# 4. Check status
 systemctl status speaky-chinese
-tail -f /var/log/speaky-chinese/bot.log
-```
-
-**Full deployment guide**: See `DEPLOY.md`
-
-### Service Management
-
-```bash
-# Start/Stop/Restart
-systemctl start speaky-chinese
-systemctl stop speaky-chinese
-systemctl restart speaky-chinese
-
-# View logs
 journalctl -u speaky-chinese.service -f
-tail -f /var/log/speaky-chinese/bot.log
-
-# Health check
-curl http://localhost:8080/health
 ```
-
-Logging note:
-- `start_all.py` should inherit stdout/stderr so systemd captures child logs.
 
 ## Testing Instructions
 

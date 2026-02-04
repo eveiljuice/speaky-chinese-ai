@@ -144,6 +144,72 @@ hanyu-bot/
 - **OpenAI API** — Whisper, GPT-4o-mini, TTS
 - **Pydantic** — Валидация настроек
 
+## Deployment
+
+### Railway (Production)
+
+Бот развернут на [Railway](https://railway.app) в webhook режиме.
+
+**Важные файлы:**
+- `railway_start.py` — запуск в webhook режиме
+- `Procfile` — конфигурация Railway
+- `railway.json` — настройки деплоя (replicas=1)
+
+**Env переменные в Railway:**
+```
+BOT_TOKEN=...
+OPENAI_API_KEY=...
+ADMIN_IDS=...
+TRIBUTE_API_KEY=...
+TRIBUTE_PRODUCT_ID=...
+TRIBUTE_PAYMENT_LINK=...
+```
+
+**Deploy:**
+```bash
+git push origin main  # Railway автоматически деплоит
+railway logs -f       # Смотреть логи
+```
+
+### Local Development
+
+```bash
+# Polling mode (для локальной разработки)
+python -m bot.main
+
+# Webhook + Payment server (для тестирования платежей)
+python start_all.py
+```
+
+## Troubleshooting
+
+### ❌ "Conflict: terminated by other getUpdates"
+
+**Причина:** Несколько экземпляров бота запущено одновременно (на Railway: replicas > 1)
+
+**Решение:**
+1. Railway Dashboard → Settings → Deploy → **Replicas = 1**
+2. Проверьте, что используется webhook mode (`railway_start.py`)
+3. Подробная инструкция: **[RAILWAY_FIX.md](./RAILWAY_FIX.md)**
+
+**Быстрый фикс:**
+```bash
+python delete_webhook.py  # Удалить webhook
+python check_webhook.py   # Проверить статус
+```
+
+### Полезные скрипты
+
+- `check_webhook.py` — проверить статус webhook
+- `delete_webhook.py` — удалить webhook
+- `railway_start.py` — запуск в webhook режиме (для Railway)
+- `start_all.py` — запуск бот + webhook сервер локально
+
+## Документация
+
+- **[AGENTS.md](./AGENTS.md)** — руководство по разработке, архитектура, команды
+- **[RAILWAY_FIX.md](./RAILWAY_FIX.md)** — решение проблем с Railway деплоем
+
 ## Лицензия
 
 MIT
