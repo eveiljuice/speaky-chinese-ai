@@ -369,3 +369,28 @@ Admins can grant premium subscriptions to users through the admin panel:
 - SQLite for simplicity
 - Foreign keys enabled
 - Indexes on frequently queried columns
+- **Railway Persistence**: Set `DB_PATH=/data/bot.db` + create Railway Volume mounted at `/data`
+- Migrations run automatically on startup (safe `ALTER TABLE ADD COLUMN`)
+
+### Subscription Expiry Notifications
+- Background task runs every 1 hour (`subscription_checker.py`)
+- Detects expired trials → sends message with Tribute payment button
+- Detects expired premium → sends renewal notification
+- Notification flags (`trial_notified`, `premium_expired_notified`) prevent duplicate messages
+- `premium_expired_notified` resets when premium is re-activated
+
+### Testing
+```bash
+# Run all subscription lifecycle tests
+python -m pytest tests/test_subscription_lifecycle.py -v
+
+# Test covers:
+# - Trial/Free/Premium status transitions
+# - Tribute payment → 30 days premium
+# - Premium expiry → features blocked
+# - Renewal restores premium
+# - Free tier limits enforcement
+# - Expiry notification system
+# - Webhook signature verification
+# - DB persistence across connections
+```

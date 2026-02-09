@@ -102,8 +102,67 @@ class UserRepository:
             )
             await db.commit()
 
+    async def get_expired_trial_users(self) -> list[User]:
+        """Get users whose trial has expired but haven't been notified yet."""
+        from bot.config import settings as cfg
+        cutoff = (datetime.utcnow() - timedelta(days=cfg.TRIAL_DAYS)).isoformat()
+
+        async with get_db() as db:
+            async with db.execute(
+                """SELECT * FROM users 
+                   WHERE trial_notified = 0
+                   AND (premium_until IS NULL OR premium_until <= ?)
+                   AND created_at <= ?
+                   AND NOT is_blocked""",
+                (datetime.utcnow().isoformat(), cutoff)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [User.from_row(dict(row)) for row in rows]
+
+    async def get_expired_premium_users(self) -> list[User]:
+        """Get users whose premium has expired but haven't been notified yet."""
+        now = datetime.utcnow().isoformat()
+        async with get_db() as db:
+            async with db.execute(
+                """SELECT * FROM users 
+                   WHERE premium_expired_notified = 0
+                   AND premium_until IS NOT NULL
+                   AND premium_until <= ?
+                   AND NOT is_blocked""",
+                (now,)
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [User.from_row(dict(row)) for row in rows]
+
+    async def mark_trial_notified(self, user_id: int) -> None:
+        """Mark user as notified about trial expiry."""
+        async with get_db() as db:
+            await db.execute(
+                "UPDATE users SET trial_notified = 1 WHERE id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
+    async def mark_premium_expired_notified(self, user_id: int) -> None:
+        """Mark user as notified about premium expiry."""
+        async with get_db() as db:
+            await db.execute(
+                "UPDATE users SET premium_expired_notified = 1 WHERE id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
+    async def reset_premium_expired_notified(self, user_id: int) -> None:
+        """Reset premium expiry notification flag (when premium is re-activated)."""
+        async with get_db() as db:
+            await db.execute(
+                "UPDATE users SET premium_expired_notified = 0 WHERE id = ?",
+                (user_id,)
+            )
+            await db.commit()
+
     async def add_premium_days(self, user_id: int, days: int) -> datetime:
-        """Add premium days to user."""
+        """Add premium days to user. Also resets premium_expired_notified flag."""
         async with get_db() as db:
             async with db.execute(
                 "SELECT premium_until FROM users WHERE id = ?", (user_id,)
@@ -122,7 +181,7 @@ class UserRepository:
             new_until = base + timedelta(days=days)
 
             await db.execute(
-                "UPDATE users SET premium_until = ? WHERE id = ?",
+                "UPDATE users SET premium_until = ?, premium_expired_notified = 0 WHERE id = ?",
                 (new_until.isoformat(), user_id)
             )
             await db.commit()

@@ -31,6 +31,10 @@ class User:
     last_active_at: datetime = field(default_factory=datetime.utcnow)
     is_blocked: bool = False
     
+    # Notification tracking
+    trial_notified: bool = False
+    premium_expired_notified: bool = False
+    
     @classmethod
     def from_row(cls, row: dict) -> "User":
         """Create User from database row."""
@@ -48,6 +52,8 @@ class User:
             created_at=_parse_datetime(row.get("created_at")) or datetime.utcnow(),
             last_active_at=_parse_datetime(row.get("last_active_at")) or datetime.utcnow(),
             is_blocked=bool(row.get("is_blocked", 0)),
+            trial_notified=bool(row.get("trial_notified", 0)),
+            premium_expired_notified=bool(row.get("premium_expired_notified", 0)),
         )
 
 

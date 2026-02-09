@@ -1,5 +1,6 @@
 """Database connection and initialization."""
 
+import logging
 import aiosqlite
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -7,7 +8,12 @@ from typing import AsyncGenerator
 
 from bot.config import settings
 
+logger = logging.getLogger(__name__)
+
 DB_PATH = Path(settings.DB_PATH)
+
+# Ensure parent directory exists (critical for Railway Volumes where DB_PATH=/data/bot.db)
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 # Database schema
 SCHEMA = """
@@ -134,11 +140,35 @@ CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
 """
 
 
+# Migrations: add new columns safely (idempotent ALTER TABLE)
+MIGRATIONS = [
+    # Migration 1: Add notification tracking columns for trial/premium expiry
+    "ALTER TABLE users ADD COLUMN trial_notified INTEGER DEFAULT 0",
+    "ALTER TABLE users ADD COLUMN premium_expired_notified INTEGER DEFAULT 0",
+]
+
+
 async def init_db() -> None:
-    """Initialize database with schema."""
+    """Initialize database with schema and run migrations."""
+    logger.info(f"Database path: {DB_PATH} (exists: {DB_PATH.exists()})")
+
     async with aiosqlite.connect(DB_PATH) as db:
         await db.executescript(SCHEMA)
         await db.commit()
+
+        # Run migrations (safe: ignores "duplicate column" errors)
+        for i, migration in enumerate(MIGRATIONS, 1):
+            try:
+                await db.execute(migration)
+                await db.commit()
+                logger.info(f"Migration {i} applied: {migration[:60]}...")
+            except Exception as e:
+                if "duplicate column" in str(e).lower():
+                    pass  # Column already exists — expected on subsequent runs
+                else:
+                    logger.warning(f"Migration {i} skipped: {e}")
+
+    logger.info("Database initialized successfully.")
 
 
 @asynccontextmanager

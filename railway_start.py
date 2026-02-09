@@ -77,6 +77,7 @@ async def health_check(request):
 async def main():
     """Run bot in webhook mode."""
     logger.info("🚀 Starting SpeakyChinese Bot (Railway Webhook Mode)...")
+    logger.info(f"DB_PATH={settings.DB_PATH}")
 
     # Initialize database
     logger.info("Initializing database...")
@@ -110,12 +111,16 @@ async def main():
     # Create aiohttp app
     app = web.Application()
 
-    # Setup webhook handler
+    # Setup webhook handler for Telegram
     webhook_handler = SimpleRequestHandler(
         dispatcher=dp,
         bot=bot,
     )
     webhook_handler.register(app, path="/webhook")
+
+    # Import and add Tribute webhook handler (payment processing)
+    from webhook_server import tribute_webhook_handler
+    app.router.add_post('/webhook/tribute', tribute_webhook_handler)
 
     # Add health check
     app.router.add_get('/health', health_check)
@@ -128,6 +133,7 @@ async def main():
     base_url = _resolve_public_base_url()
     logger.info(
         f"Webhook URL: {base_url + '/webhook' if base_url else '/webhook'}")
+    logger.info(f"Tribute webhook: /webhook/tribute")
 
     # Run app
     runner = web.AppRunner(app)
@@ -136,6 +142,11 @@ async def main():
     await site.start()
 
     logger.info("✅ Bot is running!")
+
+    # Start subscription expiry checker (background task)
+    from bot.services.subscription_checker import start_subscription_checker
+    asyncio.create_task(start_subscription_checker(bot))
+    logger.info("✅ Subscription expiry checker started!")
 
     # Keep running
     await asyncio.Event().wait()

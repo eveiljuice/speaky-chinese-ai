@@ -65,11 +65,17 @@ async def main():
     router = setup_routers()
     dp.include_router(router)
 
+    # Start subscription expiry checker (background task)
+    from bot.services.subscription_checker import start_subscription_checker
+    checker_task = asyncio.create_task(start_subscription_checker(bot))
+    logger.info("Subscription expiry checker started!")
+
     # Start polling
     logger.info("Bot started! Polling for updates...")
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
+        checker_task.cancel()
         await bot.session.close()
 
 
