@@ -165,12 +165,15 @@ async def process_chinese_message(
     # 5. If there's a correction, show it first
     if ai_result.get("correction"):
         correction = ai_result["correction"]
-        await message.answer(
-            f"✏️ <b>Исправление:</b>\n\n"
-            f"<s>{correction.get('original', chinese_text)}</s>\n\n"
-            f"✅ <b>{correction.get('corrected', '')}</b>",
-            parse_mode="HTML"
-        )
+        correction_text = f"✏️ <b>Исправление:</b>\n\n"
+        correction_text += f"<s>{correction.get('original', chinese_text)}</s>\n\n"
+        correction_text += f"✅ <b>{correction.get('corrected', '')}</b>"
+        
+        # Add pinyin if available
+        if correction.get('corrected_pinyin'):
+            correction_text += f"\n\n<i>{correction['corrected_pinyin']}</i>"
+        
+        await message.answer(correction_text, parse_mode="HTML")
     
     # 6. Synthesize response audio
     response_text = ai_result.get("response", "对不起，我不明白。")

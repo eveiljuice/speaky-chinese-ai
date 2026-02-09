@@ -80,6 +80,12 @@ hanyu-bot/
 - Each suggestion includes Chinese text + pinyin (format: "我今天看书。- Wǒ jīntiān kàn shū.")
 - Suggestions are context-aware based on conversation history and HSK level
 
+### Error Correction Feature
+- When AI detects errors in user's Chinese text, it displays a correction message
+- Correction format: ~~错误文本~~ → ✅ **正确文本** + *pinyin*
+- Pinyin is automatically generated for the corrected text
+- User can click "💡 Объяснить" button for detailed explanation of the error
+
 ### Dialogue Topics
 Available topics for conversation:
 - ✈️ Путешествия (旅游) - travel
@@ -258,7 +264,7 @@ journalctl -u speaky-chinese.service -f
 - [ ] Referral link (/start?start=ref_CODE)
 - [ ] Voice message processing
 - [ ] Text message processing
-- [ ] Error correction display
+- [ ] Error correction display (with pinyin for corrected text)
 - [ ] Inline buttons (Text, Help, Translate, Explain)
 - [ ] Settings change (level, speed, topic)
 - [ ] Settings navigation (submenu → back → close)

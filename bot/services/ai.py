@@ -68,7 +68,7 @@ async def generate_response(
 
     Returns:
         dict with keys:
-        - correction: dict with original, corrected, explanation (or None)
+        - correction: dict with original, corrected, corrected_pinyin, explanation (or None)
         - response: Bot's response in Chinese
         - pinyin: Pinyin transcription
         - translation: Russian translation
@@ -89,7 +89,7 @@ async def generate_response(
 
 回复格式（JSON）:
 {{
-    "correction": {{"original": "错误文本", "corrected": "正确文本", "explanation": "解释（俄语）"}} 或 null,
+    "correction": {{"original": "错误文本", "corrected": "正确文本", "corrected_pinyin": "正确文本的拼音", "explanation": "解释（俄语）"}} 或 null,
     "response": "你的回复（中文）",
     "pinyin": "拼音",
     "translation": "перевод на русский",
