@@ -1,4 +1,4 @@
-# HanYu 汉语 — Telegram Bot для практики китайского
+# Speaky-Chinese — Telegram Bot для практики китайского
 
 Telegram-бот для практики разговорного китайского языка с AI.
 
@@ -23,36 +23,42 @@ Telegram-бот для практики разговорного китайск�
 ### Шаги
 
 1. Клонируйте репозиторий:
+
 ```bash
 git clone <repo-url>
 cd speaky-chinese
 ```
 
-2. Создайте виртуальное окружение:
+1. Создайте виртуальное окружение:
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 venv\Scripts\activate     # Windows
 ```
 
-3. Установите зависимости:
+1. Установите зависимости:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Создайте `.env` файл:
+1. Создайте `.env` файл:
+
 ```bash
 cp .env.example .env
 ```
 
-5. Заполните `.env`:
+1. Заполните `.env`:
+
 ```env
 BOT_TOKEN=your_telegram_bot_token
 OPENAI_API_KEY=your_openai_api_key
 ADMIN_IDS=123456789,987654321
 ```
 
-6. Запустите бота:
+1. Запустите бота:
+
 ```bash
 python -m bot.main
 ```
@@ -102,29 +108,34 @@ hanyu-bot/
 
 ## Команды
 
-| Команда | Описание |
-|---------|----------|
-| `/start` | Начать работу с ботом |
-| `/help` | Справка |
-| `/topic` | Выбрать тему диалога |
-| `/settings` | Настройки |
-| `/level` | Изменить уровень HSK |
-| `/premium` | Информация о подписке |
-| `/invite` | Реферальная программа |
-| `/vocabulary` | Ваш словарь |
-| `/admin` | Админ-панель (только для админов) |
+
+| Команда       | Описание                          |
+| ------------- | --------------------------------- |
+| `/start`      | Начать работу с ботом             |
+| `/help`       | Справка                           |
+| `/topic`      | Выбрать тему диалога              |
+| `/settings`   | Настройки                         |
+| `/level`      | Изменить уровень HSK              |
+| `/premium`    | Информация о подписке             |
+| `/invite`     | Реферальная программа             |
+| `/vocabulary` | Ваш словарь                       |
+| `/admin`      | Админ-панель (только для админов) |
+
 
 ## Подписка
 
 ### Trial (3 дня)
+
 - Полный доступ ко всем функциям
 
 ### Free
+
 - 20 текстовых сообщений/день
 - 5 голосовых сообщений/день
 - 50 слов в словаре
 
 ### Premium (₽770/мес)
+
 - Безлимитные сообщения
 - Безлимитный словарь
 - Приоритетная поддержка
@@ -132,6 +143,7 @@ hanyu-bot/
 ## API стоимость
 
 При 1000 сообщений/день:
+
 - Whisper STT: ~$0.50/день
 - GPT-4o-mini: ~$0.15/день
 - TTS: ~$0.75/день
@@ -151,11 +163,13 @@ hanyu-bot/
 Бот развернут на [Railway](https://railway.app) в webhook режиме.
 
 **Важные файлы:**
+
 - `railway_start.py` — запуск в webhook режиме
 - `Procfile` — конфигурация Railway
 - `railway.json` — настройки деплоя (replicas=1)
 
 **Env переменные в Railway:**
+
 ```
 BOT_TOKEN=...
 OPENAI_API_KEY=...
@@ -166,6 +180,7 @@ TRIBUTE_PAYMENT_LINK=...
 ```
 
 **Deploy:**
+
 ```bash
 git push origin main  # Railway автоматически деплоит
 railway logs -f       # Смотреть логи
@@ -188,11 +203,13 @@ python start_all.py
 **Причина:** Несколько экземпляров бота запущено одновременно (на Railway: replicas > 1)
 
 **Решение:**
+
 1. Railway Dashboard → Settings → Deploy → **Replicas = 1**
 2. Проверьте, что используется webhook mode (`railway_start.py`)
 3. Подробная инструкция: **[RAILWAY_FIX.md](./RAILWAY_FIX.md)**
 
 **Быстрый фикс:**
+
 ```bash
 python delete_webhook.py  # Удалить webhook
 python check_webhook.py   # Проверить статус
