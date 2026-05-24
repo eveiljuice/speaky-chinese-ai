@@ -344,6 +344,7 @@ Admins can grant premium subscriptions to users through the admin panel:
 - **👥 User Management**: Browse all users, premium users only
 - **🔍 Search**: Find users by Telegram ID or @username
 - **💎 Grant Premium**: 7/30/90 days or permanent subscription
+- **🎁 Gift Links**: One-time deep links (`/start gift_TOKEN`) that grant Premium on first use
 - **🚫 Block/Unblock**: Manage access to bot
 - **📨 Direct Messages**: Send message to specific user
 - **📢 Broadcast**: Send message to all/premium/free users

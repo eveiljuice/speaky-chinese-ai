@@ -145,6 +145,45 @@ class Referral:
 
 
 @dataclass
+class GiftLink:
+    """One-time premium gift link."""
+    id: Optional[int] = None
+    token: str = ""
+    days_granted: int = 0
+    created_by: int = 0
+    used_by: Optional[int] = None
+    used_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    note: Optional[str] = None
+    created_at: datetime = field(default_factory=datetime.utcnow)
+
+    @classmethod
+    def from_row(cls, row: dict) -> "GiftLink":
+        """Create GiftLink from database row."""
+        return cls(
+            id=row.get("id"),
+            token=row.get("token", ""),
+            days_granted=row.get("days_granted", 0),
+            created_by=row.get("created_by", 0),
+            used_by=row.get("used_by"),
+            used_at=_parse_datetime(row.get("used_at")),
+            expires_at=_parse_datetime(row.get("expires_at")),
+            note=row.get("note"),
+            created_at=_parse_datetime(row.get("created_at")) or datetime.utcnow(),
+        )
+
+    @property
+    def is_used(self) -> bool:
+        return self.used_by is not None
+
+    @property
+    def is_expired(self) -> bool:
+        if self.expires_at is None:
+            return False
+        return self.expires_at <= datetime.utcnow()
+
+
+@dataclass
 class Payment:
     """Payment model."""
     id: Optional[int] = None

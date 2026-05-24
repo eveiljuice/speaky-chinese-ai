@@ -137,6 +137,22 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(status);
+
+-- One-time gift links (admin-created premium invites)
+CREATE TABLE IF NOT EXISTS gift_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token TEXT NOT NULL UNIQUE,
+    days_granted INTEGER NOT NULL,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    used_by INTEGER REFERENCES users(id),
+    used_at TIMESTAMP,
+    expires_at TIMESTAMP,
+    note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_gift_links_token ON gift_links(token);
+CREATE INDEX IF NOT EXISTS idx_gift_links_created_by ON gift_links(created_by);
 """
 
 

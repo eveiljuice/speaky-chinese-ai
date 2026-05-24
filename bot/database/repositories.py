@@ -8,7 +8,7 @@ from typing import Optional
 import aiosqlite
 
 from .database import get_db
-from .models import User, Message, DailyUsage, Referral, Payment
+from .models import User, Message, DailyUsage, Referral, Payment, GiftLink
 
 
 class UserRepository:
@@ -632,6 +632,98 @@ class AdminRepository:
             async with db.execute(query) as cursor:
                 rows = await cursor.fetchall()
                 return [row[0] for row in rows]
+
+
+class GiftLinkRepository:
+    """Repository for one-time premium gift links."""
+
+    async def create(
+        self,
+        created_by: int,
+        days: int,
+        expires_at: Optional[datetime] = None,
+        note: Optional[str] = None,
+    ) -> GiftLink:
+        """Create a new one-time gift link."""
+        token = secrets.token_urlsafe(8)
+
+        async with get_db() as db:
+            cursor = await db.execute(
+                """INSERT INTO gift_links (token, days_granted, created_by, expires_at, note)
+                   VALUES (?, ?, ?, ?, ?)""",
+                (
+                    token,
+                    days,
+                    created_by,
+                    expires_at.isoformat() if expires_at else None,
+                    note,
+                ),
+            )
+            await db.commit()
+
+            async with db.execute(
+                "SELECT * FROM gift_links WHERE id = ?", (cursor.lastrowid,)
+            ) as result:
+                row = await result.fetchone()
+                return GiftLink.from_row(dict(row))
+
+    async def get_by_token(self, token: str) -> Optional[GiftLink]:
+        """Get gift link by token."""
+        async with get_db() as db:
+            async with db.execute(
+                "SELECT * FROM gift_links WHERE token = ?", (token,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return GiftLink.from_row(dict(row))
+        return None
+
+    async def redeem(self, token: str, user_id: int) -> tuple[str, Optional[GiftLink]]:
+        """Redeem gift link atomically. Returns (status, gift_link)."""
+        now = datetime.utcnow()
+        now_iso = now.isoformat()
+
+        async with get_db() as db:
+            async with db.execute(
+                "SELECT * FROM gift_links WHERE token = ?", (token,)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if not row:
+                    return "not_found", None
+                gift = GiftLink.from_row(dict(row))
+
+            update = await db.execute(
+                """UPDATE gift_links
+                   SET used_by = ?, used_at = ?
+                   WHERE token = ?
+                     AND used_by IS NULL
+                     AND (expires_at IS NULL OR expires_at > ?)""",
+                (user_id, now_iso, token, now_iso),
+            )
+            await db.commit()
+
+            if update.rowcount == 0:
+                if gift.is_used:
+                    return "used", gift
+                if gift.is_expired:
+                    return "expired", gift
+                return "used", gift
+
+            gift.used_by = user_id
+            gift.used_at = now
+            return "ok", gift
+
+    async def list_recent(self, limit: int = 10) -> list[GiftLink]:
+        """List recent gift links (newest first)."""
+        async with get_db() as db:
+            async with db.execute(
+                """SELECT * FROM gift_links
+                   ORDER BY created_at DESC
+                   LIMIT ?""",
+                (limit,),
+            ) as cursor:
+                rows = await cursor.fetchall()
+                return [GiftLink.from_row(dict(row)) for row in rows]
 
 
 class PaymentRepository:

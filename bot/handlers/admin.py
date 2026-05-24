@@ -11,13 +11,15 @@ from aiogram.fsm.state import State, StatesGroup
 
 from bot.config import settings
 from bot.database.models import User
-from bot.database.repositories import AdminRepository, UserRepository
+from bot.database.repositories import AdminRepository, UserRepository, GiftLinkRepository
 from bot.keyboards.inline import (
     get_admin_main_keyboard,
     get_admin_user_keyboard,
     get_admin_premium_days_keyboard,
     get_admin_broadcast_keyboard,
-    get_admin_users_keyboard
+    get_admin_users_keyboard,
+    get_admin_gift_days_keyboard,
+    get_admin_gift_result_keyboard,
 )
 from bot.middlewares.subscription import get_subscription_status, SubscriptionType
 
@@ -613,4 +615,99 @@ async def callback_premium_all_admins(callback: CallbackQuery):
         result_text,
         reply_markup=get_admin_main_keyboard(),
         parse_mode="HTML"
+    )
+
+
+def _format_gift_days(days: int) -> str:
+    """Format gift link duration for display."""
+    if days >= 36500:
+        return "♾️ Навсегда"
+    return f"{days} дней"
+
+
+async def _build_gift_link(bot, token: str) -> str:
+    """Build Telegram deep link for a gift token."""
+    me = await bot.get_me()
+    return f"https://t.me/{me.username}?start=gift_{token}"
+
+
+@router.callback_query(F.data == "admin:gift")
+async def callback_admin_gift(callback: CallbackQuery):
+    """Show gift link creation menu."""
+    if not settings.is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    await callback.answer()
+    await callback.message.edit_text(
+        "🎁 <b>Одноразовая Gift-ссылка</b>\n\n"
+        "Ссылка срабатывает один раз: первый человек, "
+        "кто перейдёт по ней и нажмёт Start, получит Premium.\n\n"
+        "Выберите срок:",
+        reply_markup=get_admin_gift_days_keyboard(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data.startswith("admin:gift_days:"))
+async def callback_admin_gift_days(callback: CallbackQuery):
+    """Create one-time gift link."""
+    if not settings.is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    days = int(callback.data.split(":")[2])
+    gift_repo = GiftLinkRepository()
+    gift = await gift_repo.create(created_by=callback.from_user.id, days=days)
+    link = await _build_gift_link(callback.bot, gift.token)
+
+    await callback.answer("✅ Ссылка создана!", show_alert=True)
+    await callback.message.edit_text(
+        f"🎁 <b>Gift-ссылка создана!</b>\n\n"
+        f"Срок: <b>{_format_gift_days(days)}</b>\n"
+        f"Статус: 🟢 не использована\n\n"
+        f"Отправь эту ссылку человеку:\n"
+        f"<code>{link}</code>\n\n"
+        f"<i>⚠️ Ссылка одноразовая — после первого перехода станет недействительной.</i>",
+        reply_markup=get_admin_gift_result_keyboard(),
+        parse_mode="HTML",
+    )
+
+
+@router.callback_query(F.data == "admin:gift_list")
+async def callback_admin_gift_list(callback: CallbackQuery):
+    """Show recent gift links."""
+    if not settings.is_admin(callback.from_user.id):
+        await callback.answer("⛔ Доступ запрещён", show_alert=True)
+        return
+
+    gift_repo = GiftLinkRepository()
+    gifts = await gift_repo.list_recent(limit=10)
+
+    if not gifts:
+        await callback.answer()
+        await callback.message.edit_text(
+            "📋 <b>Gift-ссылки</b>\n\nПока нет созданных ссылок.",
+            reply_markup=get_admin_gift_days_keyboard(),
+            parse_mode="HTML",
+        )
+        return
+
+    me = await callback.bot.get_me()
+    lines = ["📋 <b>Последние gift-ссылки</b>\n"]
+    for gift in gifts:
+        status = "✅ использована" if gift.is_used else (
+            "⏰ истекла" if gift.is_expired else "🟢 активна"
+        )
+        link = f"https://t.me/{me.username}?start=gift_{gift.token}"
+        lines.append(
+            f"• {_format_gift_days(gift.days_granted)} — {status}\n"
+            f"  <code>{link}</code>"
+        )
+
+    await callback.answer()
+    await callback.message.edit_text(
+        "\n".join(lines),
+        reply_markup=get_admin_gift_days_keyboard(),
+        parse_mode="HTML",
     )

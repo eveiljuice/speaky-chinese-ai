@@ -1,60 +1,111 @@
 """Start command handler with onboarding."""
 
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.filters import Command, CommandStart, CommandObject
 from aiogram.types import Message
 
 from bot.database.models import User
-from bot.database.repositories import UserRepository, ReferralRepository
+from bot.database.repositories import (
+    UserRepository,
+    ReferralRepository,
+    GiftLinkRepository,
+    PaymentRepository,
+)
 from bot.keyboards.reply import get_main_keyboard
 
 router = Router()
 
 
 @router.message(CommandStart(deep_link=True))
-async def cmd_start_with_referral(
-    message: Message, 
+async def cmd_start_with_deeplink(
+    message: Message,
     command: CommandObject,
-    user: User
+    user: User,
 ):
-    """Handle /start with referral deep link (e.g., /start ref_abc123)."""
-    referral_code = command.args
-    
-    # Check if it's a referral link
-    if referral_code and referral_code.startswith("ref_"):
-        code = referral_code[4:]  # Remove "ref_" prefix
-        
+    """Handle /start with deep link (gift_ or ref_)."""
+    args = command.args
+    gift_granted = False
+
+    if args and args.startswith("gift_"):
+        gift_granted = await _redeem_gift_link(message, user, args[5:])
+
+    if args and args.startswith("ref_"):
+        await _process_referral(message, user, args[4:])
+
+    await show_welcome(message, user, gift_granted=gift_granted)
+
+
+async def _redeem_gift_link(message: Message, user: User, token: str) -> bool:
+    """Redeem one-time gift link. Returns True if premium was granted."""
+    gift_repo = GiftLinkRepository()
+    status, gift = await gift_repo.redeem(token, user.id)
+
+    if status == "ok" and gift:
         user_repo = UserRepository()
-        referrer = await user_repo.get_by_referral_code(code)
-        
-        if referrer and referrer.id != user.id:
-            # Check if this is a new user (created just now by middleware)
-            # We can check if user has no referrer yet
-            if not user.referrer_id:
-                # Update user's referrer
-                await user_repo.update(user.id, referrer_id=referrer.id)
-                
-                # Create referral record
-                referral_repo = ReferralRepository()
-                created = await referral_repo.create(referrer.id, user.id)
-                
-                if created:
-                    # Give bonus days to both users (+7 days each)
-                    await user_repo.add_premium_days(referrer.id, 7)
-                    await user_repo.add_premium_days(user.id, 7)
-                    
-                    # Notify referrer
-                    try:
-                        await message.bot.send_message(
-                            referrer.id,
-                            f"🎉 Ваш друг {user.first_name} зарегистрировался по вашей ссылке!\n"
-                            f"Вам начислено +7 дней Premium"
-                        )
-                    except Exception:
-                        pass  # Referrer might have blocked the bot
-    
-    # Show welcome message
-    await show_welcome(message, user)
+        new_until = await user_repo.add_premium_days(user.id, gift.days_granted)
+
+        payment_repo = PaymentRepository()
+        await payment_repo.create(
+            user_id=user.id,
+            amount=0,
+            days_granted=gift.days_granted,
+            source="promo",
+        )
+
+        days_label = (
+            "♾️ навсегда" if gift.days_granted >= 36500
+            else f"{gift.days_granted} дней"
+        )
+        await message.answer(
+            f"🎁 <b>Premium активирован!</b>\n\n"
+            f"Вам выдан Premium на <b>{days_label}</b>\n"
+            f"Активен до: {new_until.strftime('%d.%m.%Y')}",
+            parse_mode="HTML",
+        )
+        return True
+
+    if status == "used":
+        await message.answer(
+            "⚠️ Эта gift-ссылка уже была использована.",
+            parse_mode="HTML",
+        )
+    elif status == "expired":
+        await message.answer(
+            "⚠️ Срок действия этой gift-ссылки истёк.",
+            parse_mode="HTML",
+        )
+    elif status == "not_found":
+        await message.answer(
+            "⚠️ Gift-ссылка не найдена.",
+            parse_mode="HTML",
+        )
+
+    return False
+
+
+async def _process_referral(message: Message, user: User, code: str) -> None:
+    """Process referral deep link."""
+    user_repo = UserRepository()
+    referrer = await user_repo.get_by_referral_code(code)
+
+    if referrer and referrer.id != user.id and not user.referrer_id:
+        await user_repo.update(user.id, referrer_id=referrer.id)
+
+        referral_repo = ReferralRepository()
+        created = await referral_repo.create(referrer.id, user.id)
+
+        if created:
+            await user_repo.add_premium_days(referrer.id, 7)
+            await user_repo.add_premium_days(user.id, 7)
+
+            try:
+                await message.bot.send_message(
+                    referrer.id,
+                    f"🎉 Ваш друг {user.first_name} зарегистрировался по вашей ссылке!\n"
+                    f"Вам начислено +7 дней Premium",
+                )
+            except Exception:
+                pass
 
 
 @router.message(CommandStart())
@@ -63,15 +114,18 @@ async def cmd_start(message: Message, user: User):
     await show_welcome(message, user)
 
 
-async def show_welcome(message: Message, user: User):
+async def show_welcome(message: Message, user: User, gift_granted: bool = False):
     """Show welcome/onboarding message."""
+    premium_note = ""
+    if gift_granted:
+        premium_note = "\n<b>💎 Premium уже активирован по gift-ссылке!</b>\n"
+    else:
+        premium_note = "\n<b>🎁 У тебя 3 дня бесплатного Premium!</b>\n<i>Полный доступ ко всем функциям</i>\n"
+
     welcome_text = f"""🎉 <b>Добро пожаловать в SpeakyChinese!</b>
 
 Привет, <b>{user.first_name}</b>! Я помогу тебе практиковать разговорный китайский язык.
-
-<b>🎁 У тебя 3 дня бесплатного Premium!</b>
-<i>Полный доступ ко всем функциям</i>
-
+{premium_note}
 <b>Как это работает:</b>
 <b>1️⃣</b> Отправь голосовое сообщение на китайском
 <b>2️⃣</b> Я отвечу голосом и исправлю ошибки
@@ -91,11 +145,11 @@ async def show_welcome(message: Message, user: User):
 🔊 Скорость: {_get_speed_name(user.speech_speed)}
 
 <b>Начни говорить! 🎤</b>"""
-    
+
     await message.answer(
         welcome_text,
         reply_markup=get_main_keyboard(),
-        parse_mode="HTML"
+        parse_mode="HTML",
     )
 
 
@@ -134,7 +188,7 @@ async def cmd_help(message: Message, user: User):
 • 5 голосовых сообщений/день
 
 💎 <b>Premium</b> — безлимитный доступ!"""
-    
+
     await message.answer(help_text, parse_mode="HTML")
 
 
@@ -146,7 +200,7 @@ def _get_topic_name(topic: str) -> str:
         "work": "💼 Работа",
         "daily": "🏠 Быт",
         "study": "📚 Учёба",
-        "health": "🏥 Здоровье"
+        "health": "🏥 Здоровье",
     }
     return topics.get(topic, "🏠 Быт")
 
@@ -156,6 +210,6 @@ def _get_speed_name(speed: str) -> str:
     speeds = {
         "slow": "🐢 Медленная",
         "normal": "🚶 Нормальная",
-        "fast": "🏃 Быстрая"
+        "fast": "🏃 Быстрая",
     }
     return speeds.get(speed, "🚶 Нормальная")

@@ -235,6 +235,44 @@ def get_admin_main_keyboard() -> InlineKeyboardMarkup:
         text="📢 Рассылка", callback_data="admin:broadcast"))
     builder.row(InlineKeyboardButton(
         text="♾️ Premium для админов", callback_data="admin:premium_all_admins"))
+    builder.row(InlineKeyboardButton(
+        text="🎁 Gift-ссылка", callback_data="admin:gift"))
+
+    return builder.as_markup()
+
+
+def get_admin_gift_days_keyboard() -> InlineKeyboardMarkup:
+    """Get gift link days selection keyboard."""
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(text="7 дней", callback_data="admin:gift_days:7"),
+        InlineKeyboardButton(text="30 дней", callback_data="admin:gift_days:30"),
+        InlineKeyboardButton(text="90 дней", callback_data="admin:gift_days:90"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="♾️ Навсегда", callback_data="admin:gift_days:36500")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📋 Последние ссылки", callback_data="admin:gift_list")
+    )
+    builder.row(
+        InlineKeyboardButton(text="◀️ Назад", callback_data="admin:back")
+    )
+
+    return builder.as_markup()
+
+
+def get_admin_gift_result_keyboard() -> InlineKeyboardMarkup:
+    """Keyboard after gift link creation."""
+    builder = InlineKeyboardBuilder()
+
+    builder.row(
+        InlineKeyboardButton(text="🎁 Ещё ссылку", callback_data="admin:gift")
+    )
+    builder.row(
+        InlineKeyboardButton(text="◀️ В меню", callback_data="admin:back")
+    )
 
     return builder.as_markup()
 
